@@ -9,6 +9,8 @@ const WIN_LINE_PCT = ((2 + 8) / 16) * 100 // 击退线（≥2 分）在柱状图
 export const GuildView = () => {
   const stats = useStats()
   const records = useGame((s) => s.records)
+  const unlocked = useGame((s) => s.unlocked)
+  const celebrated = useGame((s) => s.celebrated)
   const importData = useGame((s) => s.importData)
   const resetAll = useGame((s) => s.resetAll)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -23,9 +25,11 @@ export const GuildView = () => {
   )
 
   const doExport = () => {
-    const blob = new Blob([JSON.stringify({ app: 'slim-hero', version: 1, records }, null, 2)], {
-      type: 'application/json',
-    })
+    // 带上成就数据：导入恢复后解锁日期与进度不丢
+    const blob = new Blob(
+      [JSON.stringify({ app: 'slim-hero', version: 1, records, unlocked, celebrated }, null, 2)],
+      { type: 'application/json' },
+    )
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -37,6 +41,7 @@ export const GuildView = () => {
   }
 
   const doImport = (file: File) => {
+    if (!window.confirm('导入将覆盖当前全部战报与战功，确定继续吗？')) return
     const reader = new FileReader()
     reader.onload = () => {
       try {

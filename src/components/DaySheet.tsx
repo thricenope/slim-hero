@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import type { DayRecord } from '../types'
 import { useGame } from '../store'
 import { EMPTY_RECORD, VERDICT_META, evaluate, isRecorded } from '../logic/scoring'
-import { dateCn, isWeekend } from '../logic/dates'
+import { dateCn, isWeekend, today } from '../logic/dates'
 import { monsterById, monsterOf } from '../logic/monsters'
 import { bigCelebration, burstAt } from '../celebrate'
 import { Monster } from './Monster'
@@ -17,6 +17,7 @@ export const DaySheet = ({ date, onClose }: { date: string; onClose: () => void 
   const clearDay = useGame((s) => s.clearDay)
   const [draft, setDraft] = useState<DayRecord>(saved ?? EMPTY_RECORD(date))
   const saveRef = useRef<HTMLButtonElement>(null)
+  const isFuture = date > today()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -31,6 +32,7 @@ export const DaySheet = ({ date, onClose }: { date: string; onClose: () => void 
   const skin = monsterById(monsterOf(date))
 
   const doSave = () => {
+    if (isFuture) return // 未来日期不可补战（store 层同样有守卫）
     const result = setDay(date, draft)
     if (result.verdict === 'win' || result.verdict === 'perfect') {
       bigCelebration()
@@ -104,19 +106,25 @@ export const DaySheet = ({ date, onClose }: { date: string; onClose: () => void 
           )}
         </div>
 
-        <motion.button
-          ref={saveRef}
-          type="button"
-          className="cta"
-          whileTap={{ scale: 0.97 }}
-          disabled={!touched}
-          onClick={doSave}
-        >
-          <Icon name="sword" size={20} />
-          {wasRecorded ? '重新结算' : '补战这一关'}
-        </motion.button>
+        {isFuture ? (
+          <p className="empty-tip" style={{ textAlign: 'center' }}>
+            未来的关卡还没开张，勇者明天再来～
+          </p>
+        ) : (
+          <motion.button
+            ref={saveRef}
+            type="button"
+            className="cta"
+            whileTap={{ scale: 0.97 }}
+            disabled={!touched}
+            onClick={doSave}
+          >
+            <Icon name="sword" size={20} />
+            {wasRecorded ? '重新结算' : '补战这一关'}
+          </motion.button>
+        )}
 
-        {wasRecorded && (
+        {wasRecorded && !isFuture && (
           <div style={{ textAlign: 'center' }}>
             <button
               className="ghost-link"

@@ -44,11 +44,11 @@ export const computeStats = (records: Record<string, DayRecord>): Stats => {
     prev = d
   }
 
-  // 当前连击：从今天往回数；今天没记录则从昨天起算
+  // 当前连击：从今天往回数；今天未开战则从昨天起算；今天已开战但没赢 = 连击已断（显示 0）
   const t = today()
   let curStreak = 0
-  let cursor = winSet.has(t) ? t : addDays(t, -1)
-  while (winSet.has(cursor)) {
+  let cursor: string | null = winSet.has(t) ? t : records[t] ? null : addDays(t, -1)
+  while (cursor && winSet.has(cursor)) {
     curStreak += 1
     cursor = addDays(cursor, -1)
   }

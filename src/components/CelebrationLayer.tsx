@@ -1,6 +1,7 @@
+import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useGame } from '../store'
-import { achById } from '../logic/quests'
+import { achById, XP_PER_TIER } from '../logic/quests'
 import { burst } from '../celebrate'
 import { Icon } from './Icon'
 
@@ -10,6 +11,18 @@ export const CelebrationLayer = () => {
   const dismiss = useGame((s) => s.dismissOneCelebrate)
   const id = queue.length > 0 ? queue[0] : null
   const ach = id ? achById(id) : null
+
+  // 自愈：持久化队列里查不到的旧 id（版本升级改名/删除）直接丢弃，否则会永久卡死弹窗
+  useEffect(() => {
+    if (id && !ach) dismiss()
+  }, [id, ach, dismiss])
+
+  // Esc 关闭，与 aria-modal 的语义保持一致
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && dismiss()
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [dismiss])
 
   return (
     <AnimatePresence>
@@ -43,7 +56,7 @@ export const CelebrationLayer = () => {
             </motion.div>
             <div className="cele-title">{ach.name}</div>
             <div className="cele-desc">{ach.desc}</div>
-            <div className="cele-xp">+{ach.tier * 25} 经验</div>
+            <div className="cele-xp">+{ach.tier * XP_PER_TIER} 经验</div>
             <div>
               <motion.button
                 type="button"

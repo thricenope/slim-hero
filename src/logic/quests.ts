@@ -2,12 +2,15 @@ import type { Stats } from '../types'
 
 export type AchKind = 'streak' | 'total' | 'special'
 
+/** 每级战功奖励经验（发放与弹窗展示共用） */
+export const XP_PER_TIER = 25
+
 export interface Achievement {
   id: string
   name: string
   desc: string
   kind: AchKind
-  tier: number // 奖励经验 = tier * 25
+  tier: number // 奖励经验 = tier * XP_PER_TIER
   goal: number
   value: (s: Stats) => number
   /** 连击之路上的关卡站点 */

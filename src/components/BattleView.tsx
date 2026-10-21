@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import type { DayRecord, Verdict } from '../types'
-import { useGame, useStats, useTodayRecord } from '../store'
-import { EMPTY_RECORD, VERDICT_META, damageOf, evaluate, isPerfect, isRecorded, isWin } from '../logic/scoring'
+import { useGame, useStats, useTodayRecord, dayXp } from '../store'
+import { EMPTY_RECORD, VERDICT_META, damageOf, evaluate, isRecorded, isWin } from '../logic/scoring'
 import { computeStats, missedRecent } from '../logic/stats'
 import { today, dateCn } from '../logic/dates'
 import { monsterById, monsterOf } from '../logic/monsters'
@@ -21,9 +21,6 @@ const BATTLE_LINES: Record<Verdict, string[]> = {
   plain: ['嗯……就掉了一层皮，它还在原地蹦跶。', '差一点点就击退了，明天补刀？', '平分秋色，怪物瑟瑟但没倒。'],
   fail: ['怪物回血了！还冲你做了个鬼脸……', '呜，今天这刀软了。明晚早点吃，一刀赢回来！', '怪物得瑟中：嘿嘿，谢谢款待～'],
 }
-
-const dayXp = (r: DayRecord | undefined | null): number =>
-  (isWin(r) ? 20 : 0) + (isPerfect(r) ? 10 : 0) + Math.min(r?.exercises.length ?? 0, 2) * 2
 
 export const BattleView = ({ onGoDungeon }: { onGoDungeon: () => void }) => {
   const saved = useTodayRecord()
@@ -53,6 +50,9 @@ export const BattleView = ({ onGoDungeon }: { onGoDungeon: () => void }) => {
 
   const monsterId = monsterOf(t)
   const skin = monsterById(monsterId)
+  // 已结算后展示以入库结果为准（改草稿只影响下方实时预览卡，不再同屏两套战果）
+  const showEv = recordedToday ? savedEv : ev
+  const showMeta = VERDICT_META[showEv.verdict]
   // 血条：未记录=满血嚣张；录了按分数预掉血；打输=怪物原样站岗
   const hpLeft = recordedToday
     ? isWin(saved)
@@ -61,13 +61,13 @@ export const BattleView = ({ onGoDungeon }: { onGoDungeon: () => void }) => {
     : touched && ev.score > 0
       ? Math.max(8, 100 - damageOf(ev.score))
       : 100
-  const mood = !touched ? 'full' : ev.verdict === 'fail' || ev.verdict === 'plain' ? 'full' : ev.verdict === 'win' ? 'hurt' : 'faint'
+  const mood = !touched && !recordedToday ? 'full' : showEv.verdict === 'fail' || showEv.verdict === 'plain' ? 'full' : showEv.verdict === 'win' ? 'hurt' : 'faint'
   const line = recordedToday
-    ? ev.verdict === 'fail'
+    ? showEv.verdict === 'fail'
       ? skin.win
-      : ev.verdict === 'plain'
+      : showEv.verdict === 'plain'
         ? '就擦破点皮！本怪还能蹦十年！'
-        : ev.verdict === 'pending'
+        : showEv.verdict === 'pending'
           ? skin.taunt
           : skin.lose
     : touched && ev.score >= 2
@@ -88,7 +88,7 @@ export const BattleView = ({ onGoDungeon }: { onGoDungeon: () => void }) => {
     const dmg = damageOf(result.score)
     setHit({
       id: Date.now(),
-      text: result.verdict === 'perfect' ? '会心一击！' : result.verdict === 'fail' ? `伤害 ${dmg}` : `伤害 ${dmg}`,
+      text: result.verdict === 'perfect' ? '会心一击！' : result.verdict === 'fail' ? '本怪回血了！' : `伤害 ${dmg}`,
       crit: result.verdict === 'perfect',
     })
     setTimeout(() => setHit(null), 1400)
@@ -191,7 +191,7 @@ export const BattleView = ({ onGoDungeon }: { onGoDungeon: () => void }) => {
             >
               <div className="hi">{line}</div>
               <div className="sub">
-                {recordedToday ? `今日战果：${meta.title}` : touched ? '预览刀法中 · 按「出手！」结算' : '怪物叫嚣中 · 录完战况就出手'}
+                {recordedToday ? `今日战果：${showMeta.title}` : touched ? '预览刀法中 · 按「出手！」结算' : '怪物叫嚣中 · 录完战况就出手'}
                 {stats.curStreak > 0 && ` · 连击 ${stats.curStreak} 关`}
               </div>
             </motion.div>
@@ -202,7 +202,7 @@ export const BattleView = ({ onGoDungeon }: { onGoDungeon: () => void }) => {
       {recordedToday && (
         <div className="done-banner">
           <Icon name="check" size={20} style={{ color: '#0e8f6c' }} />
-          <span className="t">今日已结算：{meta.title}</span>
+          <span className="t">今日已结算：{showMeta.title}</span>
           <span className="s">{savedEv.score} 分</span>
         </div>
       )}

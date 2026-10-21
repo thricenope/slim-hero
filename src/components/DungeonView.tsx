@@ -18,7 +18,8 @@ export const DungeonView = () => {
   const [sel, setSel] = useState<string | null>(null)
 
   const days = useMemo(() => monthDays(ym.y, ym.m, records), [ym, records])
-  const summary = useMemo(() => monthSummary(days), [days])
+  // 只统计本月格子，日历上下月补位不计入
+  const summary = useMemo(() => monthSummary(days.filter((d) => d.inMonth)), [days])
   const t = today()
 
   const shift = (delta: number) => {
@@ -69,6 +70,7 @@ export const DungeonView = () => {
             {days.map((d) => {
               const dayNum = parseYmd(d.date).getDate()
               const isToday = d.date === t
+              const isFuture = d.date > t
               return (
                 <button
                   type="button"
@@ -76,10 +78,12 @@ export const DungeonView = () => {
                   className={[
                     'cal-cell',
                     d.inMonth ? '' : 'dim',
+                    isFuture ? 'dim' : '',
                     isToday ? 'today' : '',
                     sel === d.date ? 'sel' : '',
                   ].join(' ')}
                   aria-label={`${d.date} ${d.verdict === 'pending' ? '未开战' : d.verdict === 'fail' ? '被回血' : d.win ? '已击退' : '平局'}，镇守：${monsterById(d.monster).name}`}
+                  disabled={isFuture}
                   onClick={() => setSel(d.date)}
                 >
                   <span className="dnum" aria-hidden="true" style={d.verdict !== 'pending' ? { display: 'none' } : undefined}>
